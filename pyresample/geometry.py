@@ -622,7 +622,7 @@ class DynamicAreaDefinition(object):
             domain = self.compute_domain(corners, resolution, size)
             self.area_extent, self.x_size, self.y_size = domain
 
-        return AreaDefinition(self.area_id, self.description, None,
+        return AreaDefinition(self.area_id, self.description, '',
                               self.proj_dict, self.x_size, self.y_size,
                               self.area_extent)
 
@@ -751,6 +751,10 @@ class AreaDefinition(BaseDefinition):
 
         self.dtype = dtype
 
+    @property
+    def proj_str(self):
+        return utils.proj4_dict_to_str(self.proj_dict, sort=True)
+
     def __str__(self):
         # We need a sorted dictionary for a unique hash of str(self)
         proj_dict = self.proj_dict
@@ -759,7 +763,7 @@ class AreaDefinition(BaseDefinition):
                                for k in sorted(proj_dict.keys())]) +
                     '}')
 
-        if self.proj_id is None:
+        if not self.proj_id:
             third_line = ""
         else:
             third_line = "Projection ID: {0}\n".format(self.proj_id)
@@ -1041,17 +1045,9 @@ class AreaDefinition(BaseDefinition):
                 cols = 1
 
         # Calculate coordinates
-        target_x = np.fromfunction(lambda i, j: (j + col_start) *
-                                   self.pixel_size_x +
-                                   self.pixel_upper_left[0],
-                                   (rows,
-                                    cols), dtype=dtype)
-
-        target_y = np.fromfunction(lambda i, j:
-                                   self.pixel_upper_left[1] -
-                                   (i + row_start) * self.pixel_size_y,
-                                   (rows,
-                                    cols), dtype=dtype)
+        target_x = np.arange(col_start, col_start + cols, dtype=dtype) * self.pixel_size_x + self.pixel_upper_left[0]
+        target_y = np.arange(row_start, row_start + rows, dtype=dtype) * -self.pixel_size_y + self.pixel_upper_left[1]
+        target_x, target_y = np.meshgrid(target_x, target_y)
 
         if is_single_value:
             # Return single values
